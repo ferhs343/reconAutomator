@@ -12,6 +12,12 @@ NC=$(tput sgr0)
 
 line_length=$(tput cols)
 
+validate_ipdomain=1
+validate_ip=1
+validate_whois=1
+validate_dnsenum=1
+validate_scan=1
+
 validate_ip() {
     local ip=$1
     local stat=1
@@ -48,50 +54,94 @@ if [[ $(id -u) -ne 0 ]]; then
     exit 1
 fi
 
-echo -e "${CYAN}What do you have for me? ip (i) / domain (d):${NC}"
-read -r ip_domain
-
-if [ "$ip_domain" == "i" ]; then
-	echo -e "${CYAN}IP:${NC}"
-	read -r ip
-    if ! validate_ip "$ip"; then
-        echo -e "${RED}Invalid IP address format. Please provide a valid IP address.${NC}"
-        exit 1
+while [ "$validate_ipdomain" -eq 1 ];
+do
+    echo -e "${CYAN}What do you have for me? ip (i) / domain (d):${NC}"
+    read -r ip_domain
+    if [[ "$ip_domain" == "i" ||
+	  "$ip_domain" == "d" ]];
+    then
+	validate_ipdomain=0
+    else
+	echo -e "${RED}Invalid option, try again.${NC}\n"
     fi
+done
+
+if [ "$ip_domain" == "i" ];
+then
+    while [ "$validate_ip" -eq 1 ];
+    do
+	echo -e "${CYAN}IP:${NC}"
+	read -r ip	
+	if ! validate_ip "$ip";
+	then
+            echo -e "${RED}Invalid IP address format. Please provide a valid IP address.${NC}\n"
+	else
+	    validate_ip=0
+	fi
+    done
+
+    while [ "$validate_whois" -eq 1 ];
+    do
 	echo -e "${CYAN}Do you want to execute whois? (y/n):${NC}"
 	read -r op
+	if [[ "$op" == "y" ||
+	      "$op" == "n" ]];
+	then
+	    validate_whois=0
+	else
+	    echo -e "${RED}Invalid option, try again.${NC}\n"
+	fi
+    done
+
+    while [ "$validate_dnsenum" -eq 1 ];
+    do
 	echo -e "${CYAN}Do you want to execute dnsenum? (y/n):${NC}"
 	read -r opdn
+	if [[ "$opdn" == "y" ||
+	      "$opdn" == "n" ]];
+	then
+	    validate_dnsenum=0
+	else
+	    echo -e "${RED}Invalid option, try again.${NC}\n"
+	fi
+    done
+
+    while [ "$validate_scan" -eq 1 ];
+    do
 	echo -e "${CYAN}Do you want to do a tcp or udp scan? (tcp/udp/both):${NC}"
 	read -r scantype
-	if [[ -z "$ip" || -z "$op" || -z "$scantype" ]]; then
-	    echo -e "${RED}I need you to give me all the values to work with${NC}"
-    	exit 1
+	if [[ "$scantype" == "tcp" ||
+	      "$scantype" == "udp" ||
+	      "$scan_type" == "both" ]];
+	then
+	    validate_scan=0
 	else
-        case "$op" in
-            "y")
-                if [[ "$opdn" == "y" ]]; then
-                    sudo ./autoInfra.sh "$ip" wy dnsy "$scantype"
-                else
-                    sudo ./autoInfra.sh "$ip" wy dnsn "$scantype"
-                fi
-                ;;
-            "n")
-                if [[ "$opdn" == "y" ]]; then
-                    sudo ./autoInfra.sh "$ip" wn dnsy "$scantype"
-                else
-                    sudo ./autoInfra.sh "$ip" wn dnsn "$scantype"
-                fi
-                ;;
-            *)
-                echo -e "${RED}There's an error, try again...${NC}"
-                exit 1
-                ;;
-        esac
+	    echo -e "${RED}Invalid option, try again.${NC}\n"
 	fi
+     done
+	    
+     case "$op" in
+         "y")
+             if [[ "$opdn" == "y" ]];
+	     then
+                 ./autoInfra.sh "$ip" wy dnsy "$scantype"
+             else
+                 ./autoInfra.sh "$ip" wy dnsn "$scantype"
+             fi
+             ;;
+         "n")
+             if [[ "$opdn" == "n" ]];
+	     then
+                 ./autoInfra.sh "$ip" wn dnsy "$scantype"
+             else
+                 ./autoInfra.sh "$ip" wn dnsn "$scantype"
+             fi
+             ;;
+     esac
 
-elif [ "$ip_domain" == "d" ]; then
-	./autoDomain.sh
-else
-	exit 1
+elif [ "$ip_domain" == "d" ];
+then
+    ./autoDomain.sh
 fi
+
