@@ -23,6 +23,11 @@ echo "${YELLOW}
 
 resfile="results.txt"
 
+if [ $(cat $resfile | wc -l) -gt 0 ];
+then
+    truncate --size 0 $resfile
+fi
+
 echo "
 ──────╔╗───╔══╗──╔═╗
 ─────╔╝╚╗──╚╣╠╝──║╔╝
@@ -88,12 +93,12 @@ hostup() {
 
 handle_port_service() {
     local port=$1
-    local service=$2
 
-    if grep -qi "$port/tcpopen" <<< "$nmap_res"; then
-        echo -e "${GREEN}$service port is open!${NC}"
+    if grep "$port/tcp" "$resfile" | grep 'open' &> /dev/null;
+    then
+        echo -e "${GREEN}port $port is open!${NC}"
     else
-        echo -e "${RED}$service port $port is not open.${NC}"
+        echo -e "${RED}port $port is not open.${NC}"
     fi
 }
 
@@ -102,32 +107,18 @@ port_service_scan() {
     out1
     line="Ports & Service Scan"
     out2
-    nmap_res=$(sudo nmap "$1" -sV | tail -n +4 | head -n -2 | tr -d ' ')
+    nmap_res=$(sudo nmap "$1" -sV | tail -n +4 | head -n -2)
     
-    numeric=$(echo "$nmap_res" | grep -o '^[0-9]\+')
-    echo "$numeric" >> "$resfile"
-    
-    #echo "$nmap_res" >> "$resfile"
+    echo "$nmap_res" >> "$resfile"
     echo -e "${MAGENTA}Nmap done, remember that these results are just for common ports.${NC}"
     echo -e "${MAGENTA}For further information, check out results.txt${NC}"
 
-    handle_port_service 21 "FTP"
-    handle_port_service 22 "SSH"
-    handle_port_service 25 "SMTP"
-    handle_port_service 53 "DNS"
-    handle_port_service 80 "HTTP"
-    handle_port_service 110 "IMAP/POP3"
-    handle_port_service 137 "SMB (NetBios)"
-    handle_port_service 138 "SMB (NetBios)"
-    handle_port_service 139 "SMB (NetBios)"
-    handle_port_service 143 "IMAP/POP3"
-    handle_port_service 445 "SMB (CIFS)"
-    handle_port_service 587 "SMTP"
-    handle_port_service 993 "IMAP/POP3 SSL/TLS"
-    handle_port_service 995 "IMAP/POP3 SSL/TLS"
-    handle_port_service 2049 "NFS"
-    handle_port_service 3306 "MySQL"
-    handle_port_service 1433 "SSQL"
+    ports=('21' '22' '25' '53' '80' '110' '111' '137' '138' '139' '143' '445' '587' '993' '995' '2049' '3306' '1433')
+
+    for (( i=0;i<="$(( ${#ports[@]} - 1 ))";i++ ));
+    do
+	    handle_port_service "${ports[$i]}"
+    done
 }
 
 dnsenumfunc() {
@@ -163,6 +154,7 @@ else
         port_service_scan "$1"
         echo -e "${MAGENTA}ALL DONE... see the results in the results.txt file${NC}"
         exit 1
+	
     elif [[ "$4" == "udp" ]]; then
         ############# udp functions 
         echo -e "${MAGENTA}ALL DONE... see the results in the results.txt file${NC}"
@@ -172,3 +164,4 @@ else
         exit 1
     fi
 fi
+
